@@ -14,31 +14,20 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from typing import Optional, Dict, Union
 import os
 import os.path as osp
-
 import pickle
+from collections import namedtuple
+from typing import Dict, Optional, Union
 
 import numpy as np
-
 import torch
 import torch.nn as nn
 
-from .lbs import (
-    lbs, vertices2landmarks, find_dynamic_lmk_idx_and_bcoords, blend_shapes)
-
+from .lbs import blend_shapes, find_dynamic_lmk_idx_and_bcoords, lbs, vertices2landmarks
+from .utils import Array, FLAMEOutput, MANOOutput, SMPLHOutput, SMPLOutput, SMPLXOutput, Struct, Tensor, find_joint_kin_chain, to_np, to_tensor
 from .vertex_ids import vertex_ids as VERTEX_IDS
-from .utils import (
-    Struct, to_np, to_tensor, Tensor, Array,
-    SMPLOutput,
-    SMPLHOutput,
-    SMPLXOutput,
-    MANOOutput,
-    FLAMEOutput,
-    find_joint_kin_chain)
 from .vertex_joint_selector import VertexJointSelector
-from collections import namedtuple
 
 TensorOutput = namedtuple('TensorOutput',
                           ['vertices', 'joints', 'betas', 'expression', 'global_orient', 'body_pose', 'left_hand_pose',
@@ -391,6 +380,7 @@ class SMPL(nn.Module):
 
         output = SMPLOutput(vertices=vertices if return_verts else None,
                             global_orient=global_orient,
+                            transl=transl,
                             body_pose=body_pose,
                             joints=joints,
                             betas=betas,
@@ -497,6 +487,7 @@ class SMPLLayer(SMPL):
 
         output = SMPLOutput(vertices=vertices if return_verts else None,
                             global_orient=global_orient,
+                            transl=transl,
                             body_pose=body_pose,
                             joints=joints,
                             betas=betas,
@@ -754,6 +745,7 @@ class SMPLH(SMPL):
                              joints=joints,
                              betas=betas,
                              global_orient=global_orient,
+                             transl=transl,
                              body_pose=body_pose,
                              left_hand_pose=left_hand_pose,
                              right_hand_pose=right_hand_pose,
@@ -883,6 +875,7 @@ class SMPLHLayer(SMPLH):
                              joints=joints,
                              betas=betas,
                              global_orient=global_orient,
+                             transl=transl,
                              body_pose=body_pose,
                              left_hand_pose=left_hand_pose,
                              right_hand_pose=right_hand_pose,
@@ -1496,7 +1489,7 @@ class SMPLXLayer(SMPLX):
                               left_hand_pose=left_hand_pose,
                               right_hand_pose=right_hand_pose,
                               jaw_pose=jaw_pose,
-                              transl=transl if transl != None else Tensor(0),
+                              transl=transl if transl is not None else Tensor(0),
                               full_pose=full_pose if return_full_pose else Tensor(0))
 
         return output
@@ -1707,6 +1700,7 @@ class MANO(SMPL):
                             joints=joints if return_verts else None,
                             betas=betas,
                             global_orient=global_orient,
+                            transl=transl,
                             hand_pose=hand_pose,
                             full_pose=full_pose if return_full_pose else None)
 
@@ -1773,6 +1767,7 @@ class MANOLayer(MANO):
             joints=joints if return_verts else None,
             betas=betas,
             global_orient=global_orient,
+            transl=transl,
             hand_pose=hand_pose,
             full_pose=full_pose if return_full_pose else None)
 
@@ -2139,6 +2134,7 @@ class FLAME(SMPL):
                              betas=betas,
                              expression=expression,
                              global_orient=global_orient,
+                             transl=transl,
                              neck_pose=neck_pose,
                              jaw_pose=jaw_pose,
                              full_pose=full_pose if return_full_pose else None)
@@ -2288,6 +2284,7 @@ class FLAMELayer(FLAME):
                              betas=betas,
                              expression=expression,
                              global_orient=global_orient,
+                             transl=transl,
                              neck_pose=neck_pose,
                              jaw_pose=jaw_pose,
                              full_pose=full_pose if return_full_pose else None)
