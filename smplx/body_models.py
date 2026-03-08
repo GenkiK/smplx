@@ -347,25 +347,46 @@ class SMPL(nn.Module):
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
 
-        bs = self.batch_size
+        bs = -1
         for v in [betas, body_pose, global_orient, transl]:
             if v is not None:
                 bs = max(bs, v.shape[0])
+        bs = self.batch_size if bs < 0 else bs # when no input was given
         should_expand_bs = bs > 1 and self.batch_size == 1
+        should_cut_default_bs = bs < self.batch_size
+        assert not (should_expand_bs and should_cut_default_bs)
 
         if global_orient is None:
-            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
+            if should_expand_bs:
+                global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:])
+            elif should_cut_default_bs:
+                global_orient = self.global_orient[:bs]
+            else:
+                global_orient = self.global_orient
 
         if body_pose is None:
-            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+            if should_expand_bs:
+                body_pose = self.body_pose.expand(bs, *self.body_pose.shape[1:])
+            elif should_cut_default_bs:
+                body_pose = self.body_pose[:bs]
+            else:
+                body_pose = self.body_pose
 
         if betas is None:
             betas = self.betas
-        betas = betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs and betas.shape[0] == 1 else betas
+        if should_expand_bs and betas.shape[0] == 1:
+            betas = betas.expand(bs, *betas.shape[1:])
+        elif should_cut_default_bs and betas.shape[0] > bs:
+            betas = betas[:bs]
 
         apply_trans = transl is not None or hasattr(self, 'transl')
         if transl is None and hasattr(self, 'transl'):
-            transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
+            if should_expand_bs:
+                transl = self.transl.expand(bs, *self.transl.shape[1:])
+            elif should_cut_default_bs:
+                transl = self.transl[:bs]
+            else:
+                transl = self.transl
 
         full_pose = torch.cat([global_orient, body_pose], dim=1)
 
@@ -703,32 +724,65 @@ class SMPLH(SMPL):
         **kwargs
     ) -> SMPLHOutput:
 
-        bs = self.batch_size
+        bs = -1
         for v in [betas, global_orient, body_pose, left_hand_pose, right_hand_pose, transl]:
             if v is not None:
                 bs = max(bs, v.shape[0])
+        bs = self.batch_size if bs < 0 else bs # when no input was given
         should_expand_bs = bs > 1 and self.batch_size == 1
+        should_cut_default_bs = bs < self.batch_size
+        assert not (should_expand_bs and should_cut_default_bs)
 
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
         if global_orient is None:
-            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
+            if should_expand_bs:
+                global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:])
+            elif should_cut_default_bs:
+                global_orient = self.global_orient[:bs]
+            else:
+                global_orient = self.global_orient
 
         if body_pose is None:
-            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+            if should_expand_bs:
+                body_pose = self.body_pose.expand(bs, *self.body_pose.shape[1:])
+            elif should_cut_default_bs:
+                body_pose = self.body_pose[:bs]
+            else:
+                body_pose = self.body_pose
 
         if betas is None:
-            betas = self.betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs  else self.betas
+            if should_expand_bs:
+                 betas = self.betas.expand(bs, *self.betas.shape[1:])
+            elif should_cut_default_bs:
+                betas = self.betas[:bs]
+            else:
+                betas = self.betas
 
         if left_hand_pose is None:
-            left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:]) if should_expand_bs else self.left_hand_pose
+            if should_expand_bs:
+                left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:])
+            elif should_cut_default_bs:
+                left_hand_pose = self.left_hand_pose[:bs]
+            else:
+                left_hand_pose = self.left_hand_pose
 
         if right_hand_pose is None:
-            right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:]) if should_expand_bs else self.right_hand_pose
+            if should_expand_bs:
+                right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:])
+            elif should_cut_default_bs:
+                right_hand_pose = self.right_hand_pose[:bs]
+            else:
+                right_hand_pose = self.right_hand_pose
 
         apply_trans = transl is not None or hasattr(self, 'transl')
         if transl is None and hasattr(self, 'transl'):
-                transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
+            if should_expand_bs:
+                transl = self.transl.expand(bs, *self.transl.shape[1:])
+            elif should_cut_default_bs:
+                transl = self.transl[:bs]
+            else:
+                transl = self.transl
 
         if self.use_pca:
             left_hand_pose = torch.einsum(
@@ -1195,44 +1249,97 @@ class SMPLX(SMPLH):
                 output: ModelOutput
                 A named tuple of type `ModelOutput`
         '''
-        bs = self.batch_size
+        bs = -1
         for v in [betas, global_orient, body_pose, left_hand_pose, right_hand_pose, transl, expression, jaw_pose, leye_pose, reye_pose]:
             if v is not None:
                 bs = max(bs, v.shape[0])
+        bs = self.batch_size if bs < 0 else bs # when no input was given
         should_expand_bs = bs > 1 and self.batch_size == 1
+        should_cut_default_bs = bs < self.batch_size
+        assert not (should_expand_bs and should_cut_default_bs)
 
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
         if global_orient is None:
-            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
+            if should_expand_bs:
+                global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:])
+            elif should_cut_default_bs:
+                global_orient = self.global_orient[:bs]
+            else:
+                global_orient = self.global_orient
 
         if body_pose is None:
-            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+            if should_expand_bs:
+                body_pose = self.body_pose.expand(bs, *self.body_pose.shape[1:])
+            elif should_cut_default_bs:
+                body_pose = self.body_pose[:bs]
+            else:
+                body_pose = self.body_pose
 
         if betas is None:
-            betas = self.betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs  else self.betas
+            if should_expand_bs:
+                 betas = self.betas.expand(bs, *self.betas.shape[1:])
+            elif should_cut_default_bs:
+                betas = self.betas[:bs]
+            else:
+                betas = self.betas
 
         if left_hand_pose is None:
-            left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:]) if should_expand_bs else self.left_hand_pose
+            if should_expand_bs:
+                left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:])
+            elif should_cut_default_bs:
+                left_hand_pose = self.left_hand_pose[:bs]
+            else:
+                left_hand_pose = self.left_hand_pose
 
         if right_hand_pose is None:
-            right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:]) if should_expand_bs else self.right_hand_pose
+            if should_expand_bs:
+                right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:])
+            elif should_cut_default_bs:
+                right_hand_pose = self.right_hand_pose[:bs]
+            else:
+                right_hand_pose = self.right_hand_pose
 
         if expression is None:
-            expression = self.expression.expand(bs, *self.expression.shape[1:]) if should_expand_bs else self.expression
+            if should_expand_bs:
+                expression = self.expression.expand(bs, *self.expression.shape[1:])
+            elif should_cut_default_bs:
+                expression = self.expression[:bs]
+            else:
+                expression = self.expression
 
         if jaw_pose is None:
-            jaw_pose = self.jaw_pose.expand(bs, *self.jaw_pose.shape[1:]) if should_expand_bs else self.jaw_pose
+            if should_expand_bs:
+                jaw_pose = self.jaw_pose.expand(bs, *self.jaw_pose.shape[1:])
+            elif should_cut_default_bs:
+                jaw_pose = self.jaw_pose[:bs]
+            else:
+                jaw_pose = self.jaw_pose
 
         if leye_pose is None:
-            leye_pose = self.leye_pose.expand(bs, *self.leye_pose.shape[1:]) if should_expand_bs else self.leye_pose
+            if should_expand_bs:
+                leye_pose = self.leye_pose.expand(bs, *self.leye_pose.shape[1:])
+            elif should_cut_default_bs:
+                leye_pose = self.leye_pose[:bs]
+            else:
+                leye_pose = self.leye_pose
 
         if reye_pose is None:
-            reye_pose = self.reye_pose.expand(bs, *self.reye_pose.shape[1:]) if should_expand_bs else self.reye_pose
+            if should_expand_bs:
+                reye_pose = self.reye_pose.expand(bs, *self.reye_pose.shape[1:])
+            elif should_cut_default_bs:
+                reye_pose = self.reye_pose[:bs]
+            else:
+                reye_pose = self.reye_pose
 
         apply_trans = transl is not None or hasattr(self, 'transl')
         if transl is None and hasattr(self, 'transl'):
-                transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
+            if should_expand_bs:
+                transl = self.transl.expand(bs, *self.transl.shape[1:])
+            elif should_cut_default_bs:
+                transl = self.transl[:bs]
+            else:
+                transl = self.transl
 
         if self.use_pca:
             left_hand_pose = torch.einsum(
