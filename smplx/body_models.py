@@ -346,23 +346,28 @@ class SMPL(nn.Module):
         '''
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
-        global_orient = (global_orient if global_orient is not None else
-                         self.global_orient)
-        body_pose = body_pose if body_pose is not None else self.body_pose
-        betas = betas if betas is not None else self.betas
+
+        bs = self.batch_size
+        for v in [betas, body_pose, global_orient, transl]:
+            if v is not None:
+                bs = max(bs, v.shape[0])
+        should_expand_bs = bs > 1 and self.batch_size == 1
+
+        if global_orient is None:
+            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
+
+        if body_pose is None:
+            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+
+        if betas is None:
+            betas = self.betas
+        betas = betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs and betas.shape[0] == 1 else betas
 
         apply_trans = transl is not None or hasattr(self, 'transl')
         if transl is None and hasattr(self, 'transl'):
-            transl = self.transl
+            transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
 
         full_pose = torch.cat([global_orient, body_pose], dim=1)
-
-        batch_size = max(betas.shape[0], global_orient.shape[0],
-                         body_pose.shape[0])
-
-        if betas.shape[0] != batch_size:
-            num_repeats = int(batch_size / betas.shape[0])
-            betas = betas.expand(num_repeats, -1)
 
         vertices, joints = lbs(betas, full_pose, self.v_template,
                                self.shapedirs, self.posedirs,
@@ -697,24 +702,33 @@ class SMPLH(SMPL):
         pose2rot: bool = True,
         **kwargs
     ) -> SMPLHOutput:
-        '''
-        '''
+
+        bs = self.batch_size
+        for v in [betas, global_orient, body_pose, left_hand_pose, right_hand_pose, transl]:
+            if v is not None:
+                bs = max(bs, v.shape[0])
+        should_expand_bs = bs > 1 and self.batch_size == 1
 
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
-        global_orient = (global_orient if global_orient is not None else
-                         self.global_orient)
-        body_pose = body_pose if body_pose is not None else self.body_pose
-        betas = betas if betas is not None else self.betas
-        left_hand_pose = (left_hand_pose if left_hand_pose is not None else
-                          self.left_hand_pose)
-        right_hand_pose = (right_hand_pose if right_hand_pose is not None else
-                           self.right_hand_pose)
+        if global_orient is None:
+            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
+
+        if body_pose is None:
+            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+
+        if betas is None:
+            betas = self.betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs  else self.betas
+
+        if left_hand_pose is None:
+            left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:]) if should_expand_bs else self.left_hand_pose
+
+        if right_hand_pose is None:
+            right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:]) if should_expand_bs else self.right_hand_pose
 
         apply_trans = transl is not None or hasattr(self, 'transl')
-        if transl is None:
-            if hasattr(self, 'transl'):
-                transl = self.transl
+        if transl is None and hasattr(self, 'transl'):
+                transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
 
         if self.use_pca:
             left_hand_pose = torch.einsum(
@@ -1181,27 +1195,44 @@ class SMPLX(SMPLH):
                 output: ModelOutput
                 A named tuple of type `ModelOutput`
         '''
+        bs = self.batch_size
+        for v in [betas, global_orient, body_pose, left_hand_pose, right_hand_pose, transl, expression, jaw_pose, leye_pose, reye_pose]:
+            if v is not None:
+                bs = max(bs, v.shape[0])
+        should_expand_bs = bs > 1 and self.batch_size == 1
 
         # If no shape and pose parameters are passed along, then use the
         # ones from the module
-        global_orient = (global_orient if global_orient is not None else
-                         self.global_orient)
-        body_pose = body_pose if body_pose is not None else self.body_pose
-        betas = betas if betas is not None else self.betas
+        if global_orient is None:
+            global_orient = self.global_orient.expand(bs, *self.global_orient.shape[1:]) if should_expand_bs else self.global_orient
 
-        left_hand_pose = (left_hand_pose if left_hand_pose is not None else
-                          self.left_hand_pose)
-        right_hand_pose = (right_hand_pose if right_hand_pose is not None else
-                           self.right_hand_pose)
-        jaw_pose = jaw_pose if jaw_pose is not None else self.jaw_pose
-        leye_pose = leye_pose if leye_pose is not None else self.leye_pose
-        reye_pose = reye_pose if reye_pose is not None else self.reye_pose
-        expression = expression if expression is not None else self.expression
+        if body_pose is None:
+            body_pose = self.body_pose.expand(bs, *body_pose.shape[1:]) if should_expand_bs else self.body_pose
+
+        if betas is None:
+            betas = self.betas.expand(bs, *self.betas.shape[1:]) if should_expand_bs  else self.betas
+
+        if left_hand_pose is None:
+            left_hand_pose = self.left_hand_pose.expand(bs, *self.left_hand_pose.shape[1:]) if should_expand_bs else self.left_hand_pose
+
+        if right_hand_pose is None:
+            right_hand_pose = self.right_hand_pose.expand(bs, *self.right_hand_pose.shape[1:]) if should_expand_bs else self.right_hand_pose
+
+        if expression is None:
+            expression = self.expression.expand(bs, *self.expression.shape[1:]) if should_expand_bs else self.expression
+
+        if jaw_pose is None:
+            jaw_pose = self.jaw_pose.expand(bs, *self.jaw_pose.shape[1:]) if should_expand_bs else self.jaw_pose
+
+        if leye_pose is None:
+            leye_pose = self.leye_pose.expand(bs, *self.leye_pose.shape[1:]) if should_expand_bs else self.leye_pose
+
+        if reye_pose is None:
+            reye_pose = self.reye_pose.expand(bs, *self.reye_pose.shape[1:]) if should_expand_bs else self.reye_pose
 
         apply_trans = transl is not None or hasattr(self, 'transl')
-        if transl is None:
-            if hasattr(self, 'transl'):
-                transl = self.transl
+        if transl is None and hasattr(self, 'transl'):
+                transl = self.transl.expand(bs, *self.transl.shape[1:]) if should_expand_bs else self.transl
 
         if self.use_pca:
             left_hand_pose = torch.einsum(
